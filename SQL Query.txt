@@ -1,0 +1,73 @@
+##Create customers table
+CREATE TABLE customers (
+customer_uid TEXT PRIMARY KEY,
+is_business TEXT NOT NULL,
+has_account TEXT NOT NULL,
+bill_state TEXT,
+acquisition_channel TEXT NOT NULL
+);
+##Create orders table
+CREATE TABLE orders(
+order_id INTEGER PRIMARY KEY,
+customer_uid TEXT FOREIGN KEY,
+order_timestamp DATETIME NOT NULL,
+discount REAL NOT NULL,
+ship_state TEXT NOT NULL,
+shipping_revenue REAL NOT NULL,
+shipping_cost REAL NOT NULL,
+returned TEXT NOT NULL
+);
+
+##Create line_items table
+CREATE TABLE line_items(
+line_item_id INTEGER PRIMARY KEY,
+order_id INTEGER NOT NULL,
+quantity INTEGER NOT NULL,
+selling_price REAL,
+supplier_cost REAL,
+product_category TEXT NOT NULL,
+color TEXT NOT NULL,
+size TEXT NOT NULL
+);
+
+
+## Question 1 Solution (How many orders were completed in 2018?) 
+SELECT COUNT(DISTINCT order_id) as orders_completed,
+strftime('%Y', date(order_timestamp)) AS year
+FROM orders
+WHERE strftime('%Y', date(order_timestamp)) in ('2018') 
+
+## Question 2 Solution (How many orders were completed in 2018 containing at least 10 units?)
+SELECT COUNT(DISTINCT a.order_id) as orders_completed,
+strftime('%Y', date(a.order_timestamp)) AS year
+FROM orders a
+INNER JOIN  line_items b ON a.order_id = b.order_id
+WHERE strftime('%Y', date(a.order_timestamp)) in ('2018') 
+AND b.quantity >= 10
+
+## Question 3 Solution (How many customers have ever purchased a medium sized sweater with a discount?)
+SELECT COUNT(a.customer_uid) as customers_msw_purchased
+FROM orders a
+INNER JOIN  line_items b ON a.order_id = b.order_id
+WHERE a.discount > 0
+AND b.size IN ('M');
+
+## Question 4 Solution (How profitable was our most profitable month?)
+SELECT ROUND(SUM(b.selling_price),2) AS total_selling_price,
+ROUND(SUM(b.supplier_cost),2) AS total_supplier_cost,
+ROUND(SUM(b.selling_price) - SUM(b.supplier_cost),2) AS total_profit,
+strftime('%Y', date(a.order_timestamp)) AS year,
+strftime('%m', date(a.order_timestamp)) AS month
+FROM orders a
+INNER JOIN  line_items b ON a.order_id = b.order_id
+
+## Question 5 Solution (What is the return rate for business vs. non-business customers?)
+SELECT COUNT(a.customer_uid) AS total_customer_count,
+SUM(CASE WHEN c.is_business  LIKE '%TRUE%' THEN 1 ELSE 0 END) AS total_business,
+SUM(CASE WHEN c.is_business LIKE '%FALSE%' THEN 1 ELSE 0 END) AS total_non_business,
+COUNT(a.customer_uid) / SUM(CASE WHEN c.is_business LIKE '%TRUE%' THEN 1 ELSE 0 END) AS Pct_change_business,
+COUNT(a.customer_uid) / SUM(CASE WHEN c.is_business LIKE '%FALSE%' THEN 1 ELSE 0 END) AS Pct_change_non_business
+FROM orders a
+INNER JOIN customers c ON a.customer_uid = c.customer_uid
+WHERE a.returned LIKE '%TRUE%
+
